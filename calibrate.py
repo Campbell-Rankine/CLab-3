@@ -4,22 +4,41 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 #
-I = Image.open('stereo2012a.jpg');
-
-plt.imshow(I)
-uv = plt.ginput(6) # Graphical user interface to get 6 points
-
-calibrate(I, uv, uv)
 
 #####################################################################
 def calibrate(im, XYZ, uv):
     # TBD
-    assert(XYZ.shape[1] == uv.shape[1])
-    XYZ = [XYZ, np.ones(XYZ.shape[1], 1)]
-    uv = [uv, np.ones(uv.shape[1], 1)]#add row of ones
-    print(XYZ, uv)
+    assert(len(XYZ) == len(uv))
+    XYZ_h = np.array([list(i + (1,)) for i in XYZ]) #Convert to homogeneous
+    uv_h = np.array([u + (1,) for u in uv])
+        
+    #Initialize A, append all Ai
+    A = []
+    for i in range(len(XYZ)):
+        world = XYZ_h[i][0:3]
+        img = uv_h[i][0:2]
+        
+        (u,v) = img
+        (X,Y,Z) = world
+        
+        Ai = np.array([0,0,0,0,-X,-Y,-Z,-1, v*X, v*Y, v*Z,v, X,Y,Z,1,0,0,0,0,-u*X, -u*Y,-u*Z,-u])
+        A.append(Ai)
     
-    C = None
+    A = np.array(A).T
+    U,S,V = np.linalg.svd(A) #Calculate SVD
+    P = V[-1] / np.linalg.norm(V[-1])
+    p = np.reshape(P, (3,4))
+    C = p
+    projection = (C @ XYZ_h.T).T
+    projection = [x[0:2] for x in projection]
+    print(projection)
+    
+    from vgg_KR_from_P import vgg_KR_from_P
+    K,R,t = vgg_KR_from_P(p)
+    
+    print("K: " + str(K))
+    print("R: " + str(R))
+    print("t: " + str(t))
     return C
 '''
 %% TASK 1: CALIBRATE
@@ -91,3 +110,12 @@ def rq(A):
     Q = q.T
     return R,Q
 
+#main loop
+I = Image.open('stereo2012a.jpg');
+RealCoords = [(7,7,0), (14,7,0), (21,7,0), (7,14,0), (14,14,0), (21,14,0), (0,7,7), (0,7,14), (0,7,21), (0,14,7), (0,14,14), (0,14,21)]
+print("Please click on the first 2 rows of XY dots, then the first two rows of ZY dots")
+import time
+time.sleep(5)
+plt.imshow(I)
+uv = plt.ginput(12) # Graphical user interface to get 6 points
+calibrate(I, RealCoords, uv)

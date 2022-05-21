@@ -49,5 +49,5 @@ def vgg_KR_from_P(P, noscale = True):
     t = np.linalg.inv(-P[:,0:N]) @ P[:,-1]
     return K, R, t
 
-K, R, t = vgg_KR_from_P(C)
-print()
+#K, R, t = vgg_KR_from_P(C)
+#print()
